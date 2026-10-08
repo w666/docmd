@@ -24,7 +24,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const plugin: PluginDescriptor = {
   name: 'openapi',
   version: '0.9.7',
-  capabilities: ['markdown', 'assets']
+  capabilities: ['markdown', 'assets'],
 };
 
 // ---------------------------------------------------------------------------
@@ -140,23 +140,56 @@ const METHOD_COLORS: Record<string, string> = {
   patch: '#8b5cf6',
   delete: '#ef4444',
   head: '#6b7280',
-  options: '#6b7280'
+  options: '#6b7280',
 };
 
 function esc(str: string): string {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+function normalizeMarkdownListParagraphs(str: string): string {
+  const lines = String(str).replace(/\r\n/g, '\n').split('\n');
+  const normalized: string[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const next = lines[i + 1]?.trim() ?? '';
+    const currentTrim = line.trim();
+
+    if (
+      currentTrim &&
+      !/^\s*(?:[-*+]\s+|\d+\.\s+)/.test(currentTrim) &&
+      /:$/u.test(currentTrim) &&
+      /^(?:[-*+]\s+|\d+\.\s+)/u.test(next)
+    ) {
+      normalized.push(line);
+      normalized.push('');
+      continue;
+    }
+
+    if (currentTrim && !/^\s*(?:[-*+]\s+|\d+\.\s+)/.test(currentTrim) && /^(?:[-*+]\s+|\d+\.\s+)/u.test(next)) {
+      normalized.push(line);
+      normalized.push('');
+      continue;
+    }
+
+    normalized.push(line);
+  }
+
+  return normalized.join('\n');
+}
+
 function renderMarkdownText(str: string, options: any): string {
   if (!str) return '';
   try {
+    const markdown = normalizeMarkdownListParagraphs(str);
     const MarkdownIt = require('markdown-it');
     return new MarkdownIt({
       html: Boolean(options?.allowRawHtml),
       linkify: true,
-      typographer: true
+      typographer: true,
     })
-      .render(str)
+      .render(markdown)
       .trim();
   } catch {
     return options?.allowRawHtml ? String(str) : esc(String(str));
@@ -332,7 +365,7 @@ function renderExamples(
   media: OAMediaType | undefined,
   schema: OASchema | undefined,
   spec: OASpec,
-  options: any
+  options: any,
 ): string {
   let body = '';
   if (media?.examples && Object.keys(media.examples).length > 0) {
@@ -349,7 +382,7 @@ function renderExamples(
             ? `<p><a href="${esc(example.externalValue)}" target="_blank" rel="noopener noreferrer">${esc(example.externalValue)}</a></p>`
             : ''
       }
-    </details>`
+    </details>`,
       )
       .join('');
   } else if (media?.example !== undefined) {
@@ -424,7 +457,7 @@ function renderSchemaTable(schema: OASchema | undefined, spec: OASpec, options: 
   const raw = resolveSchema(schema, spec);
   const variantGroups: [string, OASchema[] | undefined][] = [
     ['One of', raw.oneOf],
-    ['Any of', raw.anyOf]
+    ['Any of', raw.anyOf],
   ];
   for (const [label, variants] of variantGroups) {
     if (variants && variants.length > 0) {
@@ -582,7 +615,7 @@ function parseSpecContent(raw: string, label = '<inline>'): OASpec {
     return yaml.load(raw) as OASpec;
   } catch {
     throw new Error(
-      `OpenAPI plugin: YAML spec at "${label}" requires js-yaml to be installed.\nRun: npm install js-yaml`
+      `OpenAPI plugin: YAML spec at "${label}" requires js-yaml to be installed.\nRun: npm install js-yaml`,
     );
   }
 }
@@ -611,7 +644,7 @@ function resolveSpecFile(specPath: string, rootDir: string, env: any): { absPath
       safePath(projectBoundary, asUserPath(specPath));
     } catch (_e: any) {
       return {
-        error: `<div class="oa-error">OpenAPI spec path escapes project root: <code>${esc(specPath)}</code></div>`
+        error: `<div class="oa-error">OpenAPI spec path escapes project root: <code>${esc(specPath)}</code></div>`,
       };
     }
   }
@@ -655,12 +688,12 @@ function resolveSpecFile(specPath: string, rootDir: string, env: any): { absPath
     safePath(projectBoundary, asUserPath(specPath));
   } catch (_e: any) {
     return {
-      error: `<div class="oa-error">OpenAPI spec path escapes project root: <code>${esc(specPath)}</code></div>`
+      error: `<div class="oa-error">OpenAPI spec path escapes project root: <code>${esc(specPath)}</code></div>`,
     };
   }
 
   return {
-    error: `<div class="oa-error">OpenAPI spec not found: <code>${esc(specPath)}</code></div>`
+    error: `<div class="oa-error">OpenAPI spec not found: <code>${esc(specPath)}</code></div>`,
   };
 }
 
@@ -784,7 +817,7 @@ export function getAssets(_options?: any): any[] {
       src: cssPath,
       dest: 'assets/css/docmd-openapi.css',
       type: 'css',
-      location: 'head'
-    }
+      location: 'head',
+    },
   ];
 }
